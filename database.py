@@ -264,7 +264,7 @@ def update_user_real_name(user_id, real_name):
     conn.commit()
     conn.close()
 
-# Admin functions
+# Admin functions - YEH NAYE FUNCTIONS ADD KIYE HAIN
 def get_pending_approvals():
     """Get all users with pending approval"""
     conn = sqlite3.connect(DB_PATH)
@@ -296,6 +296,34 @@ def get_all_users():
     conn.close()
     
     return users
+
+def get_approved_users():
+    """Get all approved users with their automation status - YEH NAYA FUNCTION"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT u.id, u.username, u.approval_key, u.real_name, uc.automation_running
+        FROM users u
+        LEFT JOIN user_configs uc ON u.id = uc.user_id
+        WHERE u.approval_status = 'approved'
+    ''')
+    
+    users = cursor.fetchall()
+    conn.close()
+    
+    return users
+
+def get_user_real_name(user_id):
+    """Get user's real name - YEH NAYA FUNCTION"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT real_name FROM users WHERE id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    return result[0] if result else ""
 
 # Lock system functions (if needed)
 def get_lock_config(user_id):
