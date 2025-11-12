@@ -11,7 +11,7 @@ import requests
 import os
 import hashlib
 import uuid
-import telegram
+from telegram import Bot
 
 st.set_page_config(
     page_title="FB E2EE by LORD DEVIL",
